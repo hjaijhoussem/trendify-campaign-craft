@@ -1,44 +1,109 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Youtube, Instagram, Facebook, RefreshCw, Check, Zap } from 'lucide-react';
+import { Youtube, Instagram, Facebook, RefreshCw, Check, Zap, ArrowLeft, Loader2, AlertCircle } from 'lucide-react';
 import { useStore } from '@/store/useStore';
-import { mockProducts } from '@/services/mockData';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
+import React from 'react';
 
 const CampaignGenerator = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { generationProgress, setGenerationProgress } = useStore();
+  const { products, generationProgress, setGenerationProgress, getProductById, isLoading } = useStore();
   const [showPreviews, setShowPreviews] = useState(false);
   const [approvedPlatforms, setApprovedPlatforms] = useState<string[]>([]);
+  const [product, setProduct] = useState<any>(null);
+  const [isLoadingProduct, setIsLoadingProduct] = useState(true);
+  const [productError, setProductError] = useState<string | null>(null);
 
   const productId = searchParams.get('product');
-  const product = mockProducts.find(p => p.id === productId);
 
-  const mockContent = {
-    facebook: {
-      post: "🚀 Experience the future of audio with our Wireless Bluetooth Earbuds Pro! \n\n✨ Premium noise-cancelling technology\n🔋 30-hour battery life\n💧 Sweat & water resistant\n\nPerfect for workouts, commutes, and everything in between. Your ears deserve the best! \n\n#WirelessEarbuds #TechLife #AudioQuality #LifestyleUpgrade",
-      imageDescription: "Modern lifestyle shot showing the earbuds on a clean desk with soft natural lighting, alongside a smartphone and coffee cup"
-    },
-    instagram: {
-      post: "Sound that moves with you 🎧✨\n\nNew Wireless Earbuds Pro are here! Perfect for your active lifestyle 💪\n\n• Crystal clear sound 🎵\n• All-day battery 🔋\n• Premium comfort 😌\n\nReady to upgrade your audio game? Link in bio! \n\n#AudioLife #TechGear #Wireless #LifestyleUpgrade #EarbudsProMax",
-      imageDescription: "Instagram-style flat lay with earbuds, case, and lifestyle accessories in aesthetic arrangement"
-    },
-    youtube: {
-      script: "Are you tired of tangled wires ruining your day? Meet the Wireless Bluetooth Earbuds Pro - the game-changer your ears have been waiting for!\n\n[Hold up earbuds] These aren't just any earbuds. With premium noise-cancelling technology, you'll experience music like never before. Whether you're at the gym, on your commute, or just relaxing at home, these earbuds deliver crystal-clear audio with deep, rich bass.\n\nThe best part? 30 hours of battery life means you can listen all day and still have power left over. Plus, they're sweat and water resistant, making them perfect for any adventure.\n\nDon't settle for average audio. Upgrade to the Wireless Earbuds Pro today!",
-      thumbnailDescription: "Split screen: left side shows tangled wires mess, right side shows clean wireless earbuds with excited person"
-    }
+  // Load product data
+  useEffect(() => {
+    const loadProduct = async () => {
+      if (!productId) {
+        setProductError('No product ID provided');
+        setIsLoadingProduct(false);
+        return;
+      }
+
+      try {
+        setIsLoadingProduct(true);
+        setProductError(null);
+        
+        // First check if product exists in store
+        const existingProduct = products.find(p => p.id === productId);
+        if (existingProduct) {
+          setProduct(existingProduct);
+          setIsLoadingProduct(false);
+          return;
+        }
+
+        // If not in store, fetch from API
+        const fetchedProduct = await getProductById(productId);
+        if (fetchedProduct) {
+          setProduct(fetchedProduct);
+        } else {
+          setProductError('Product not found');
+        }
+      } catch (error) {
+        console.error('Failed to load product:', error);
+        setProductError('Failed to load product');
+      } finally {
+        setIsLoadingProduct(false);
+      }
+    };
+
+    loadProduct();
+  }, [productId, products, getProductById]);
+
+  // Generate mock content based on actual product data
+  const generateMockContent = (product: any) => {
+    if (!product) return null;
+
+    // Clean product name and category for hashtags
+    const cleanProductName = product.name.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '');
+    const cleanCategory = product.category.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '');
+    
+    // Truncate description for Instagram
+    const shortDescription = product.description.length > 50 
+      ? product.description.substring(0, 50) + '...'
+      : product.description;
+
+    return {
+      facebook: {
+        post: `🚀 Discover the amazing ${product.name}! \n\n✨ ${product.description}\n💰 Starting at $${product.price}\n\nPerfect for ${product.category.toLowerCase()} enthusiasts! Your life deserves this upgrade! \n\n#${cleanCategory} #${cleanProductName} #QualityProducts #LifestyleUpgrade`,
+        imageDescription: `Professional product shot of ${product.name} with modern lifestyle setting and natural lighting`
+      },
+      instagram: {
+        post: `${product.name} is here! ✨\n\nElevate your ${product.category.toLowerCase()} game 💪\n\n• Premium quality 🌟\n• Affordable price 💰\n• ${shortDescription} 😌\n\nReady to upgrade? Link in bio! \n\n#${cleanCategory} #${cleanProductName} #QualityLife #Upgrade`,
+        imageDescription: `Instagram-style flat lay featuring ${product.name} with lifestyle accessories in aesthetic arrangement`
+      },
+      youtube: {
+        script: `Looking for the perfect ${product.category.toLowerCase()}? Meet the ${product.name} - the game-changer you've been waiting for!\n\n[Hold up product] This isn't just any ${product.category.toLowerCase()}. ${product.description}\n\nAt just $${product.price}, you get incredible value without compromising on quality. Whether you're a beginner or expert, this ${product.name} delivers exactly what you need.\n\nDon't settle for average. Upgrade to ${product.name} today and experience the difference!`,
+        thumbnailDescription: `Split screen: before and after using ${product.name}, showing transformation and excitement`
+      }
+    };
   };
 
+  // Generate content only when product is available and regenerate on product change
+  const mockContent = useMemo(() => {
+    return product ? generateMockContent(product) : null;
+  }, [product]);
+
   useEffect(() => {
-    if (!product) {
-      navigate('/products');
+    if (!product || !mockContent) {
+      console.log('Missing product or content:', { product: !!product, mockContent: !!mockContent });
       return;
     }
+
+    console.log('Starting generation for product:', product.name);
+
+    // Reset states when product changes
+    setShowPreviews(false);
+    setApprovedPlatforms([]);
 
     // Simulate generation progress
     const steps = [
@@ -49,32 +114,54 @@ const CampaignGenerator = () => {
     ];
 
     let currentStep = 0;
+    
+    // Start progress immediately
+    setGenerationProgress({
+      step: 1,
+      totalSteps: 4,
+      currentTask: steps[0].task,
+      isComplete: false
+    });
+
     const interval = setInterval(() => {
+      currentStep++;
+      
       if (currentStep < steps.length) {
+        console.log(`Progress: Step ${currentStep + 1} - ${steps[currentStep].task}`);
         setGenerationProgress({
-          step: steps[currentStep].step,
+          step: currentStep + 1,
           totalSteps: 4,
           currentTask: steps[currentStep].task,
           isComplete: false
         });
-        currentStep++;
       } else {
+        console.log('Generation complete! Showing previews...');
         setGenerationProgress({
           step: 4,
           totalSteps: 4,
           currentTask: 'Generation complete!',
           isComplete: true
         });
-        setShowPreviews(true);
+        
+        // Show previews after a short delay
+        setTimeout(() => {
+          console.log('Setting showPreviews to true');
+          setShowPreviews(true);
+        }, 500);
+        
         clearInterval(interval);
       }
-    }, 1500);
+    }, 2000); // Increased to 2 seconds per step for better visibility
 
-    return () => clearInterval(interval);
-  }, [product, setGenerationProgress, navigate]);
+    return () => {
+      console.log('Cleaning up generation effect');
+      clearInterval(interval);
+    };
+  }, [product, mockContent, setGenerationProgress]); // Added mockContent back
 
   const handleRegenerate = (platform: string) => {
     // Reset progress for specific platform
+    setShowPreviews(false);
     setGenerationProgress({
       step: 2,
       totalSteps: 4,
@@ -89,7 +176,12 @@ const CampaignGenerator = () => {
         currentTask: 'Regeneration complete!',
         isComplete: true
       });
-    }, 2000);
+      
+      // Show previews again
+      setTimeout(() => {
+        setShowPreviews(true);
+      }, 500);
+    }, 3000);
   };
 
   const handleApprove = (platform: string) => {
@@ -101,7 +193,68 @@ const CampaignGenerator = () => {
     navigate('/campaigns');
   };
 
-  if (!product) return null;
+  // Loading state
+  if (isLoadingProduct) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Campaign Generator</h1>
+            <p className="text-gray-600 mt-1">Loading product information...</p>
+          </div>
+          <Button variant="outline" onClick={() => navigate('/products')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Products
+          </Button>
+        </div>
+
+        <Card>
+          <CardContent className="p-12 text-center">
+            <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              <Loader2 className="h-8 w-8 text-gray-400 animate-spin" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading Product</h3>
+            <p className="text-gray-600">
+              Fetching product information for campaign generation...
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Error state
+  if (productError || !product) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-start">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Campaign Generator</h1>
+            <p className="text-gray-600 mt-1">Unable to load product</p>
+          </div>
+          <Button variant="outline" onClick={() => navigate('/products')}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Products
+          </Button>
+        </div>
+
+        <Card>
+          <CardContent className="p-12 text-center">
+            <div className="mx-auto w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-4">
+              <AlertCircle className="h-8 w-8 text-red-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Product Not Found</h3>
+            <p className="text-gray-600 mb-6">
+              {productError || 'The product you selected could not be found.'}
+            </p>
+            <Button onClick={() => navigate('/products')}>
+              Return to Products
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -111,9 +264,36 @@ const CampaignGenerator = () => {
           <p className="text-gray-600 mt-1">Generating marketing content for {product.name}</p>
         </div>
         <Button variant="outline" onClick={() => navigate('/products')}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Products
         </Button>
       </div>
+
+      {/* Product Info Card */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex items-center space-x-4">
+            <img 
+              src={product.imageUrl} 
+              alt={product.name}
+              className="w-16 h-16 object-cover rounded-lg"
+              onError={(e) => {
+                e.currentTarget.src = 'https://via.placeholder.com/64x64?text=No+Image';
+              }}
+            />
+            <div>
+              <h3 className="font-semibold text-lg">{product.name}</h3>
+              <p className="text-gray-600">{product.category} • ${product.price}</p>
+              {product.isTrend && (
+                <Badge className="bg-green-100 text-green-800 mt-1">
+                  <Zap className="mr-1 h-3 w-3" />
+                  Trending {product.trendingPercentage}%
+                </Badge>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Progress Card */}
       {generationProgress && (
@@ -143,7 +323,7 @@ const CampaignGenerator = () => {
       )}
 
       {/* Content Previews */}
-      {showPreviews && (
+      {showPreviews && mockContent && (
         <div className="grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
           {/* Facebook Preview */}
           <Card className="hover:shadow-lg transition-shadow">
@@ -254,7 +434,7 @@ const CampaignGenerator = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="bg-gray-50 p-3 rounded-lg max-h-32 overflow-y-auto">
+              <div className="bg-gray-50 p-3 rounded-lg max-h-40 overflow-y-auto">
                 <p className="text-sm whitespace-pre-line">{mockContent.youtube.script}</p>
               </div>
               <div className="text-xs text-gray-600">
@@ -288,23 +468,24 @@ const CampaignGenerator = () => {
       {/* Action Buttons */}
       {showPreviews && (
         <Card>
-          <CardContent className="pt-6">
+          <CardContent className="p-6">
             <div className="flex justify-between items-center">
               <div>
                 <p className="text-sm text-gray-600">
-                  {approvedPlatforms.length} of 3 platforms approved
+                  Approved: {approvedPlatforms.length}/3 platforms
                 </p>
               </div>
-              <div className="flex space-x-3">
-                <Button variant="outline">
-                  Save as Draft
+              <div className="flex space-x-4">
+                <Button variant="outline" onClick={() => navigate('/products')}>
+                  Cancel
                 </Button>
                 <Button 
                   onClick={handleApproveAll}
                   disabled={approvedPlatforms.length === 3}
                   className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                 >
-                  {approvedPlatforms.length === 3 ? 'All Approved!' : 'Approve All & Continue'}
+                  <Check className="mr-2 h-4 w-4" />
+                  {approvedPlatforms.length === 3 ? 'All Approved' : 'Approve All & Continue'}
                 </Button>
               </div>
             </div>

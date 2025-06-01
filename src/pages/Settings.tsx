@@ -1,12 +1,13 @@
-
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Settings as SettingsIcon, User, Youtube, Instagram, Facebook, Check, ArrowRight } from 'lucide-react';
+import { Settings as SettingsIcon, User, Youtube, Instagram, Facebook, Check, ArrowRight, Bell, Mail, Smartphone } from 'lucide-react';
 import { useState } from 'react';
+import { useNotificationStore } from '@/store/useNotificationStore';
 
 const Settings = () => {
   const [connected, setConnected] = useState({
@@ -15,8 +16,14 @@ const Settings = () => {
     facebook: true
   });
 
+  const { settings, updateSettings } = useNotificationStore();
+
   const handleConnect = (platform: string) => {
     setConnected(prev => ({ ...prev, [platform]: !prev[platform] }));
+  };
+
+  const handleNotificationSettingChange = (setting: string, value: boolean) => {
+    updateSettings({ [setting]: value });
   };
 
   return (
@@ -71,6 +78,113 @@ const Settings = () => {
           </div>
 
           <Button>Save Profile</Button>
+        </CardContent>
+      </Card>
+
+      {/* Notification Settings */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Bell className="mr-2 h-5 w-5" />
+            Notification Settings
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {/* General Notification Preferences */}
+          <div className="space-y-4">
+            <h3 className="font-medium text-gray-900">General Preferences</h3>
+            
+            <div className="flex items-center justify-between py-2">
+              <div className="flex items-center space-x-3">
+                <Mail className="h-5 w-5 text-gray-600" />
+                <div>
+                  <Label htmlFor="emailNotifications">Email Notifications</Label>
+                  <p className="text-sm text-gray-600">Receive notifications via email</p>
+                </div>
+              </div>
+              <Switch 
+                id="emailNotifications"
+                checked={settings.emailNotifications}
+                onCheckedChange={(value) => handleNotificationSettingChange('emailNotifications', value)}
+              />
+            </div>
+
+            <div className="flex items-center justify-between py-2">
+              <div className="flex items-center space-x-3">
+                <Smartphone className="h-5 w-5 text-gray-600" />
+                <div>
+                  <Label htmlFor="pushNotifications">Push Notifications</Label>
+                  <p className="text-sm text-gray-600">Receive browser push notifications</p>
+                </div>
+              </div>
+              <Switch 
+                id="pushNotifications"
+                checked={settings.pushNotifications}
+                onCheckedChange={(value) => handleNotificationSettingChange('pushNotifications', value)}
+              />
+            </div>
+          </div>
+
+          <div className="border-t pt-4">
+            <h3 className="font-medium text-gray-900 mb-4">Notification Types</h3>
+            
+            <div className="space-y-4">
+              <div className="flex items-center justify-between py-2">
+                <div>
+                  <Label htmlFor="trendAlerts">Trend Alerts</Label>
+                  <p className="text-sm text-gray-600">Get notified when products start trending</p>
+                </div>
+                <Switch 
+                  id="trendAlerts"
+                  checked={settings.trendAlerts}
+                  onCheckedChange={(value) => handleNotificationSettingChange('trendAlerts', value)}
+                />
+              </div>
+
+              <div className="flex items-center justify-between py-2">
+                <div>
+                  <Label htmlFor="campaignUpdates">Campaign Updates</Label>
+                  <p className="text-sm text-gray-600">Notifications about campaign performance and status</p>
+                </div>
+                <Switch 
+                  id="campaignUpdates"
+                  checked={settings.campaignUpdates}
+                  onCheckedChange={(value) => handleNotificationSettingChange('campaignUpdates', value)}
+                />
+              </div>
+
+              <div className="flex items-center justify-between py-2">
+                <div>
+                  <Label htmlFor="productUpdates">Product Updates</Label>
+                  <p className="text-sm text-gray-600">Notifications about product imports and changes</p>
+                </div>
+                <Switch 
+                  id="productUpdates"
+                  checked={settings.productUpdates}
+                  onCheckedChange={(value) => handleNotificationSettingChange('productUpdates', value)}
+                />
+              </div>
+
+              <div className="flex items-center justify-between py-2">
+                <div>
+                  <Label htmlFor="systemUpdates">System Updates</Label>
+                  <p className="text-sm text-gray-600">Important system announcements and maintenance</p>
+                </div>
+                <Switch 
+                  id="systemUpdates"
+                  checked={settings.systemUpdates}
+                  onCheckedChange={(value) => handleNotificationSettingChange('systemUpdates', value)}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="pt-4 border-t">
+            <p className="text-sm text-gray-600 mb-4">
+              You can also manage your notifications from the notification dropdown in the header.
+            </p>
+            <Button variant="outline">Save Notification Settings</Button>
+          </div>
         </CardContent>
       </Card>
 

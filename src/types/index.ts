@@ -1,14 +1,15 @@
-
 export interface Product {
   id: string;
   name: string;
   description: string;
   category: string;
-  image: string;
+  imageUrl: string;
   price: number;
-  trendingScore?: number;
-  isTrending?: boolean;
-  createdAt: Date;
+  trendingPercentage?: number;
+  isTrend?: boolean;
+  keywords?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface TrendData {
@@ -60,4 +61,25 @@ export interface GenerationProgress {
   totalSteps: number;
   currentTask: string;
   isComplete: boolean;
+}
+
+export interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error' | 'trend' | 'campaign';
+  isRead: boolean;
+  createdAt: Date;
+  actionUrl?: string;
+  actionLabel?: string;
+  data?: any;
+}
+
+export interface NotificationSettings {
+  emailNotifications: boolean;
+  pushNotifications: boolean;
+  trendAlerts: boolean;
+  campaignUpdates: boolean;
+  productUpdates: boolean;
+  systemUpdates: boolean;
 }
