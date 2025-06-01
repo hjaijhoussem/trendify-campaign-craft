@@ -8,10 +8,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ArrowLeft, Save, Upload as UploadIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
+import { useNotifications } from '@/hooks/useNotifications';
 
 const ProductAddManual = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { notifyProductAdded } = useNotifications();
   
   const [formData, setFormData] = useState({
     name: '',
@@ -85,10 +87,14 @@ const ProductAddManual = () => {
       
       console.log('New product:', newProduct);
       
+      // Show toast notification
       toast({
         title: "Success!",
         description: "Product has been added successfully.",
       });
+
+      // Add notification to the notification system
+      notifyProductAdded(formData.name, 'manual');
       
       navigate('/products');
     } catch (error) {

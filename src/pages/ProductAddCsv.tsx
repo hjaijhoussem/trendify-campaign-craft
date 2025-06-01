@@ -7,6 +7,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Progress } from '@/components/ui/progress';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface CsvRow {
   name: string;
@@ -25,6 +26,7 @@ interface ValidationError {
 const ProductAddCsv = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { notifyBulkProductsImported } = useNotifications();
   
   const [dragOver, setDragOver] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -189,10 +191,14 @@ const ProductAddCsv = () => {
       // Here you would typically call your API to import the products
       console.log('Importing products:', csvData);
       
+      // Show toast notification
       toast({
         title: "Success!",
         description: `${csvData.length} products imported successfully.`,
       });
+
+      // Add notification to the notification system
+      notifyBulkProductsImported(csvData.length);
       
       navigate('/products');
     } catch (error) {

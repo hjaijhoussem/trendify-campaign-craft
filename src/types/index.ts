@@ -1,4 +1,3 @@
-
 export interface Product {
   id: string;
   name: string;
@@ -60,4 +59,25 @@ export interface GenerationProgress {
   totalSteps: number;
   currentTask: string;
   isComplete: boolean;
+}
+
+export interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error' | 'trend' | 'campaign';
+  isRead: boolean;
+  createdAt: Date;
+  actionUrl?: string;
+  actionLabel?: string;
+  data?: any;
+}
+
+export interface NotificationSettings {
+  emailNotifications: boolean;
+  pushNotifications: boolean;
+  trendAlerts: boolean;
+  campaignUpdates: boolean;
+  productUpdates: boolean;
+  systemUpdates: boolean;
 }

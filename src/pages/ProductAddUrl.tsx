@@ -10,6 +10,7 @@ import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
+import { useNotifications } from '@/hooks/useNotifications';
 
 interface ExtractedData {
   title: string;
@@ -27,6 +28,7 @@ interface ExtractedData {
 const ProductAddUrl = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { notifyProductAdded } = useNotifications();
   
   const [url, setUrl] = useState('');
   const [isExtracting, setIsExtracting] = useState(false);
@@ -209,10 +211,14 @@ const ProductAddUrl = () => {
       
       console.log('New product from URL:', newProduct);
       
+      // Show toast notification
       toast({
         title: "Success!",
         description: "Product has been imported successfully.",
       });
+
+      // Add notification to the notification system
+      notifyProductAdded(editableData.name, 'url');
       
       navigate('/products');
     } catch (error) {
