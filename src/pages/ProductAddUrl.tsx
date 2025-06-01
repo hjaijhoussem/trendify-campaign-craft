@@ -31,6 +31,7 @@ interface ScrapedData {
   description: string;
   category: string;
   price: string;
+  keywords: string;
   imageUrl: string;
 }
 
@@ -167,6 +168,7 @@ const ProductAddUrl = () => {
         description: 'Product description scraped from the provided URL. This is a high-quality product with excellent features and great value for money.',
         category: 'Electronics', // Default category
         price: (Math.random() * 100 + 10).toFixed(2),
+        keywords: 'product,quality,affordable', // Default keywords
         imageUrl: 'https://via.placeholder.com/300x200?text=Scraped+Image'
       };
       
@@ -251,6 +253,24 @@ const ProductAddUrl = () => {
       return;
     }
 
+    // Validate and format keywords
+    let processedKeywords = '';
+    if (scrapedData.keywords.trim()) {
+      // Remove spaces and ensure comma separation
+      processedKeywords = scrapedData.keywords
+        .split(',')
+        .map(keyword => keyword.trim())
+        .filter(keyword => keyword.length > 0)
+        .join(',');
+      
+      if (processedKeywords !== scrapedData.keywords.replace(/\s+/g, '')) {
+        toast({
+          title: "Keywords Formatted",
+          description: "Keywords have been formatted to remove spaces and ensure proper comma separation.",
+        });
+      }
+    }
+
     // Clear any previous errors
     clearError();
     
@@ -260,7 +280,8 @@ const ProductAddUrl = () => {
         description: scrapedData.description,
         category: scrapedData.category,
         price: price,
-        imageUrl: scrapedData.imageUrl
+        imageUrl: scrapedData.imageUrl,
+        keywords: processedKeywords || undefined
       };
       
       // Add product via API
@@ -435,6 +456,20 @@ const ProductAddUrl = () => {
                     required
                     disabled={!canEdit || isLoading}
                   />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="keywords">Keywords</Label>
+                  <Input
+                    id="keywords"
+                    value={scrapedData.keywords}
+                    onChange={(e) => handleInputChange('keywords', e.target.value)}
+                    placeholder="iphone,apple,smartphone,mobile"
+                    disabled={!canEdit || isLoading}
+                  />
+                  <p className="text-sm text-gray-500">
+                    Enter keywords separated by commas (no spaces). Example: iphone,apple,smartphone
+                  </p>
                 </div>
 
                 <div className="grid gap-6 md:grid-cols-2">

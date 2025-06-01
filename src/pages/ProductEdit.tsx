@@ -23,6 +23,7 @@ const ProductEdit = () => {
     description: '',
     category: '',
     price: '',
+    keywords: '',
     imageUrl: ''
   });
   
@@ -66,6 +67,7 @@ const ProductEdit = () => {
             description: product.description,
             category: product.category,
             price: product.price.toString(),
+            keywords: product.keywords || '',
             imageUrl: product.imageUrl
           });
         } else {
@@ -123,6 +125,24 @@ const ProductEdit = () => {
       return;
     }
 
+    // Validate and format keywords
+    let processedKeywords = '';
+    if (formData.keywords.trim()) {
+      // Remove spaces and ensure comma separation
+      processedKeywords = formData.keywords
+        .split(',')
+        .map(keyword => keyword.trim())
+        .filter(keyword => keyword.length > 0)
+        .join(',');
+      
+      if (processedKeywords !== formData.keywords.replace(/\s+/g, '')) {
+        toast({
+          title: "Keywords Formatted",
+          description: "Keywords have been formatted to remove spaces and ensure proper comma separation.",
+        });
+      }
+    }
+
     setIsUpdating(true);
     
     try {
@@ -131,7 +151,8 @@ const ProductEdit = () => {
         description: formData.description,
         category: formData.category,
         price: parseFloat(formData.price),
-        imageUrl: formData.imageUrl
+        imageUrl: formData.imageUrl,
+        keywords: processedKeywords || undefined
       };
       
       // Update product via API
@@ -346,6 +367,19 @@ const ProductEdit = () => {
                 rows={4}
                 required
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="keywords">Keywords</Label>
+              <Input
+                id="keywords"
+                value={formData.keywords}
+                onChange={(e) => handleInputChange('keywords', e.target.value)}
+                placeholder="iphone,apple,smartphone,mobile"
+              />
+              <p className="text-sm text-gray-500">
+                Enter keywords separated by commas (no spaces). Example: iphone,apple,smartphone
+              </p>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">

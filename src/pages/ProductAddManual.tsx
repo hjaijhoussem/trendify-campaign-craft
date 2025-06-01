@@ -22,6 +22,7 @@ const ProductAddManual = () => {
     description: '',
     category: '',
     price: '',
+    keywords: '',
     imageUrl: 'https://via.placeholder.com/300x200?text=Product+Image'
   });
   
@@ -82,6 +83,24 @@ const ProductAddManual = () => {
       return;
     }
 
+    // Validate and format keywords
+    let processedKeywords = '';
+    if (formData.keywords.trim()) {
+      // Remove spaces and ensure comma separation
+      processedKeywords = formData.keywords
+        .split(',')
+        .map(keyword => keyword.trim())
+        .filter(keyword => keyword.length > 0)
+        .join(',');
+      
+      if (processedKeywords !== formData.keywords.replace(/\s+/g, '')) {
+        toast({
+          title: "Keywords Formatted",
+          description: "Keywords have been formatted to remove spaces and ensure proper comma separation.",
+        });
+      }
+    }
+
     // Clear any previous errors
     clearError();
     
@@ -92,7 +111,8 @@ const ProductAddManual = () => {
         description: formData.description,
         category: formData.category,
         price: Number(formData.price),
-        imageUrl: formData.imageUrl
+        imageUrl: formData.imageUrl,
+        keywords: processedKeywords || undefined
       };
       
       // Add product via API
@@ -207,6 +227,20 @@ const ProductAddManual = () => {
                 required
                 disabled={isLoading}
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="keywords">Keywords</Label>
+              <Input
+                id="keywords"
+                value={formData.keywords}
+                onChange={(e) => handleInputChange('keywords', e.target.value)}
+                placeholder="iphone,apple,smartphone,mobile"
+                disabled={isLoading}
+              />
+              <p className="text-sm text-gray-500">
+                Enter keywords separated by commas (no spaces). Example: iphone,apple,smartphone
+              </p>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">

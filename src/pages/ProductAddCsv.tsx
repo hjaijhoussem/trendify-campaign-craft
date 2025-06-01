@@ -14,6 +14,7 @@ interface CsvProduct {
   description: string;
   category: string;
   price: number;
+  keywords: string;
   imageUrl: string;
 }
 
@@ -54,7 +55,7 @@ const ProductAddCsv = () => {
       const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
       
       // Validate headers
-      const requiredHeaders = ['name', 'description', 'category', 'price', 'imageUrl'];
+      const requiredHeaders = ['name', 'description', 'category', 'price', 'imageUrl', 'keywords'];
       const missingHeaders = requiredHeaders.filter(h => !headers.includes(h));
       
       if (missingHeaders.length > 0) {
@@ -76,6 +77,7 @@ const ProductAddCsv = () => {
             description: values[headers.indexOf('description')] || '',
             category: values[headers.indexOf('category')] || '',
             price: parseFloat(values[headers.indexOf('price')] || '0'),
+            keywords: values[headers.indexOf('keywords')] || '',
             imageUrl: values[headers.indexOf('imageUrl')] || 'https://via.placeholder.com/300x200?text=Product+Image'
           };
           
@@ -121,12 +123,24 @@ const ProductAddCsv = () => {
             throw new Error(`Invalid price: ${productData.price}`);
           }
 
+          // Validate and format keywords
+          let processedKeywords = '';
+          if (productData.keywords && productData.keywords.trim()) {
+            // Remove spaces and ensure comma separation
+            processedKeywords = productData.keywords
+              .split(',')
+              .map(keyword => keyword.trim())
+              .filter(keyword => keyword.length > 0)
+              .join(',');
+          }
+
           await addProduct({
             name: productData.name,
             description: productData.description,
             category: productData.category,
             price: price,
-            imageUrl: productData.imageUrl
+            imageUrl: productData.imageUrl,
+            keywords: processedKeywords || undefined
           });
           
           results.successful++;
@@ -171,9 +185,9 @@ const ProductAddCsv = () => {
   };
 
   const downloadTemplate = () => {
-    const csvContent = "name,description,category,price,imageUrl\n" +
-      "Sample Product,This is a sample product description,Electronics,29.99,https://via.placeholder.com/300x200\n" +
-      "Another Product,Another sample description,Clothing & Apparel,19.99,https://via.placeholder.com/300x200";
+    const csvContent = "name,description,category,price,imageUrl,keywords\n" +
+      "Sample Product,This is a sample product description,Electronics,29.99,https://via.placeholder.com/300x200,sample,product,electronics\n" +
+      "Another Product,Another sample description,Clothing & Apparel,19.99,https://via.placeholder.com/300x200,clothing,apparel,fashion";
     
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -289,6 +303,7 @@ const ProductAddCsv = () => {
                       <th className="text-left p-2">Name</th>
                       <th className="text-left p-2">Category</th>
                       <th className="text-left p-2">Price</th>
+                      <th className="text-left p-2">Keywords</th>
                       <th className="text-left p-2">Description</th>
                     </tr>
                   </thead>
@@ -298,6 +313,7 @@ const ProductAddCsv = () => {
                         <td className="p-2">{product.name}</td>
                         <td className="p-2">{product.category}</td>
                         <td className="p-2">${product.price}</td>
+                        <td className="p-2 truncate max-w-xs">{product.keywords || 'None'}</td>
                         <td className="p-2 truncate max-w-xs">{product.description}</td>
                       </tr>
                     ))}
@@ -408,10 +424,11 @@ const ProductAddCsv = () => {
       <div className="bg-blue-50 rounded-lg p-4">
         <h3 className="font-semibold text-blue-900 mb-2">CSV Format Requirements</h3>
         <ul className="text-sm text-blue-800 space-y-1">
-          <li>• Required columns: name, description, category, price, imageUrl</li>
+          <li>• Required columns: name, description, category, price, imageUrl, keywords</li>
           <li>• Use comma-separated values (CSV format)</li>
           <li>• Prices should be numeric values (e.g., 29.99)</li>
           <li>• ImageUrl should be a valid URL or leave empty for placeholder</li>
+          <li>• Keywords should be comma-separated within the cell (e.g., "iphone,apple,mobile")</li>
           <li>• First row should contain column headers</li>
         </ul>
       </div>
