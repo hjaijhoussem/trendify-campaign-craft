@@ -10,6 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Products from "./pages/Products";
 import Trends from "./pages/Trends";
 import Campaigns from "./pages/Campaigns";
+import CampaignGenerator from "./pages/CampaignGenerator";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
