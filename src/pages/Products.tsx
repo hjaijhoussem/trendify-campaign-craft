@@ -39,7 +39,10 @@ const Products = () => {
           <h1 className="text-3xl font-bold text-gray-900">Products</h1>
           <p className="text-gray-600 mt-1">Manage your product catalog and generate campaigns for trending items.</p>
         </div>
-        <Button className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+        <Button 
+          className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+          onClick={() => navigate('/products/add')}
+        >
           <Plus className="mr-2 h-4 w-4" />
           Add Product
         </Button>

@@ -8,6 +8,7 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import Dashboard from "./pages/Dashboard";
 import Products from "./pages/Products";
+import ProductAdd from "./pages/ProductAdd";
 import Trends from "./pages/Trends";
 import Campaigns from "./pages/Campaigns";
 import CampaignGenerator from "./pages/CampaignGenerator";
