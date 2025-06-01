@@ -32,6 +32,17 @@ export const useNotifications = () => {
     });
   }, [addNotification]);
 
+  const notifyProductUpdated = useCallback((productName: string) => {
+    addNotification({
+      title: 'Product Updated',
+      message: `"${productName}" has been updated successfully`,
+      type: 'success',
+      isRead: false,
+      actionUrl: '/products',
+      actionLabel: 'View Products'
+    });
+  }, [addNotification]);
+
   const notifyTrendingProduct = useCallback((productName: string, trendScore: number) => {
     addNotification({
       title: 'Trending Product Alert',
@@ -95,6 +106,7 @@ export const useNotifications = () => {
   return {
     notifyProductAdded,
     notifyBulkProductsImported,
+    notifyProductUpdated,
     notifyTrendingProduct,
     notifyCampaignStatusChange,
     notifyError,

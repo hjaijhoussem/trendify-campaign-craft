@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +29,10 @@ const Products = () => {
       isComplete: false
     });
     navigate(`/campaign-generator?product=${productId}`);
+  };
+
+  const handleEditProduct = (productId: string) => {
+    navigate(`/products/edit/${productId}`);
   };
 
   return (
@@ -112,6 +115,7 @@ const Products = () => {
                         variant="outline" 
                         size="sm" 
                         className="flex-1"
+                        onClick={() => handleEditProduct(product.id)}
                       >
                         Edit
                       </Button>

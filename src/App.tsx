@@ -11,6 +11,7 @@ import ProductAdd from "./pages/ProductAdd";
 import ProductAddManual from "./pages/ProductAddManual";
 import ProductAddCsv from "./pages/ProductAddCsv";
 import ProductAddUrl from "./pages/ProductAddUrl";
+import ProductEdit from "./pages/ProductEdit";
 import Trends from "./pages/Trends";
 import Campaigns from "./pages/Campaigns";
 import CampaignGenerator from "./pages/CampaignGenerator";
@@ -37,6 +38,7 @@ const App = () => (
                 <Route path="/products/add/manual" element={<ProductAddManual />} />
                 <Route path="/products/add/csv" element={<ProductAddCsv />} />
                 <Route path="/products/add/url" element={<ProductAddUrl />} />
+                <Route path="/products/edit/:id" element={<ProductEdit />} />
                 <Route path="/trends" element={<Trends />} />
                 <Route path="/campaigns" element={<Campaigns />} />
                 <Route path="/campaign-generator" element={<CampaignGenerator />} />
