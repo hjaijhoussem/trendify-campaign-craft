@@ -5,12 +5,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Search, Globe, Edit3, Save, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Search, Globe, Edit3, Save, RefreshCw, Loader2, AlertCircle, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { useNotifications } from '@/hooks/useNotifications';
+import { useStore } from '@/store/useStore';
 
 interface ExtractedData {
   title: string;
@@ -25,23 +26,24 @@ interface ExtractedData {
   };
 }
 
+interface ScrapedData {
+  name: string;
+  description: string;
+  category: string;
+  price: string;
+  imageUrl: string;
+}
+
 const ProductAddUrl = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { addProduct, isLoading, error, clearError } = useStore();
   const { notifyProductAdded } = useNotifications();
   
   const [url, setUrl] = useState('');
-  const [isExtracting, setIsExtracting] = useState(false);
-  const [extractedData, setExtractedData] = useState<ExtractedData | null>(null);
-  const [editableData, setEditableData] = useState({
-    name: '',
-    description: '',
-    category: '',
-    price: '',
-    image: ''
-  });
-  const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
+  const [isScrapingUrl, setIsScrapingUrl] = useState(false);
+  const [scrapedData, setScrapedData] = useState<ScrapedData | null>(null);
+  const [canEdit, setCanEdit] = useState(false);
 
   const categories = [
     'Electronics',
@@ -131,62 +133,106 @@ const ProductAddUrl = () => {
     return mockData;
   };
 
-  const handleExtract = async () => {
+  const handleScrapeUrl = async () => {
     if (!url) {
       toast({
         title: "URL Required",
-        description: "Please enter a valid URL to extract product data.",
+        description: "Please enter a valid product URL.",
         variant: "destructive"
       });
       return;
     }
 
-    if (!isValidUrl(url)) {
+    // Basic URL validation
+    try {
+      new URL(url);
+    } catch {
       toast({
         title: "Invalid URL",
-        description: "Please enter a valid HTTP or HTTPS URL.",
+        description: "Please enter a valid URL starting with http:// or https://",
         variant: "destructive"
       });
       return;
     }
 
-    setIsExtracting(true);
+    setIsScrapingUrl(true);
     
     try {
-      const data = await simulateDataExtraction(url);
-      setExtractedData(data);
-      setEditableData({
-        name: data.title,
-        description: data.description,
-        category: data.category,
-        price: data.price,
-        image: data.images[0] || ''
-      });
+      // Simulate scraping delay and mock data
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      // Mock scraped data based on the URL
+      const mockData: ScrapedData = {
+        name: extractProductNameFromUrl(url),
+        description: 'Product description scraped from the provided URL. This is a high-quality product with excellent features and great value for money.',
+        category: 'Electronics', // Default category
+        price: (Math.random() * 100 + 10).toFixed(2),
+        imageUrl: 'https://via.placeholder.com/300x200?text=Scraped+Image'
+      };
+      
+      setScrapedData(mockData);
+      setCanEdit(true);
       
       toast({
-        title: "Data Extracted",
-        description: "Product information has been successfully extracted from the URL.",
+        title: "Product Information Extracted",
+        description: "Review and edit the extracted information before adding to your catalog.",
       });
     } catch (error) {
       toast({
-        title: "Extraction Failed",
-        description: "Failed to extract product data from the URL. Please try again or check if the URL is supported.",
+        title: "Scraping Failed",
+        description: "Unable to extract product information from the URL. Please try manually adding the product.",
         variant: "destructive"
       });
     } finally {
-      setIsExtracting(false);
+      setIsScrapingUrl(false);
+    }
+  };
+
+  const extractProductNameFromUrl = (url: string): string => {
+    try {
+      const urlObj = new URL(url);
+      const pathname = urlObj.pathname;
+      
+      // Extract potential product name from URL path
+      const segments = pathname.split('/').filter(segment => segment.length > 0);
+      const lastSegment = segments[segments.length - 1];
+      
+      // Convert URL-friendly format to readable name
+      if (lastSegment) {
+        return lastSegment
+          .replace(/[-_]/g, ' ')
+          .replace(/\b\w/g, l => l.toUpperCase())
+          .substring(0, 50);
+      }
+      
+      return 'Imported Product';
+    } catch {
+      return 'Imported Product';
     }
   };
 
   const handleInputChange = (field: string, value: string) => {
-    setEditableData(prev => ({
-      ...prev,
-      [field]: value
-    }));
+    if (scrapedData) {
+      setScrapedData(prev => ({
+        ...prev!,
+        [field]: value
+      }));
+    }
   };
 
-  const handleSave = async () => {
-    if (!editableData.name || !editableData.description || !editableData.category || !editableData.price) {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!scrapedData) {
+      toast({
+        title: "No Product Data",
+        description: "Please scrape a URL first to get product information.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (!scrapedData.name || !scrapedData.description || !scrapedData.category || !scrapedData.price) {
       toast({
         title: "Validation Error",
         description: "Please fill in all required fields.",
@@ -195,54 +241,59 @@ const ProductAddUrl = () => {
       return;
     }
 
-    setIsSaving(true);
+    const price = parseFloat(scrapedData.price);
+    if (isNaN(price) || price < 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please enter a valid price.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Clear any previous errors
+    clearError();
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const newProduct = {
-        id: Date.now().toString(),
-        ...editableData,
-        price: parseFloat(editableData.price),
-        createdAt: new Date(),
-        importedFrom: extractedData?.metadata.url
+      const productData = {
+        name: scrapedData.name,
+        description: scrapedData.description,
+        category: scrapedData.category,
+        price: price,
+        imageUrl: scrapedData.imageUrl
       };
       
-      console.log('New product from URL:', newProduct);
+      // Add product via API
+      await addProduct(productData);
       
-      // Show toast notification
+      console.log('Added product from URL:', productData);
+      
+      // Show success toast
       toast({
         title: "Success!",
-        description: "Product has been imported successfully.",
+        description: "Product has been imported and added to your catalog.",
       });
 
-      // Add notification to the notification system
-      notifyProductAdded(editableData.name, 'url');
+      // Add notification
+      notifyProductAdded(scrapedData.name, 'url');
       
       navigate('/products');
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to add product';
+      
       toast({
         title: "Error",
-        description: "Failed to save product. Please try again.",
+        description: errorMessage,
         variant: "destructive"
       });
-    } finally {
-      setIsSaving(false);
     }
   };
 
   const resetForm = () => {
     setUrl('');
-    setExtractedData(null);
-    setEditableData({
-      name: '',
-      description: '',
-      category: '',
-      price: '',
-      image: ''
-    });
-    setIsEditing(false);
+    setScrapedData(null);
+    setCanEdit(false);
+    clearError();
   };
 
   return (
@@ -252,272 +303,239 @@ const ProductAddUrl = () => {
           variant="outline" 
           onClick={() => navigate('/products/add')}
           className="flex items-center"
+          disabled={isScrapingUrl || isLoading}
         >
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back
         </Button>
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Import via URL</h1>
-          <p className="text-gray-600 mt-1">Extract product information from any supported e-commerce URL.</p>
+          <h1 className="text-3xl font-bold text-gray-900">Import from URL</h1>
+          <p className="text-gray-600 mt-1">Extract product information from any product page URL.</p>
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center">
-            <Globe className="mr-2 h-5 w-5" />
-            URL Import
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="url">Product URL *</Label>
-              <div className="flex space-x-2">
+      {/* Show error banner if there's an error */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <AlertCircle className="h-5 w-5 text-red-400 mr-2" />
+              <p className="text-red-800 text-sm">
+                {error}
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={clearError}>
+              Dismiss
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {!scrapedData ? (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Globe className="mr-2 h-5 w-5" />
+              Product URL
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="url">Product Page URL *</Label>
                 <Input
                   id="url"
+                  type="url"
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   placeholder="https://example.com/product-page"
-                  className="flex-1"
+                  disabled={isScrapingUrl}
                 />
-                <Button
-                  onClick={handleExtract}
-                  disabled={isExtracting || !url}
-                  className="bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700"
-                >
-                  {isExtracting ? (
-                    <>
-                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                      Extracting...
-                    </>
-                  ) : (
-                    <>
-                      <Search className="mr-2 h-4 w-4" />
-                      Extract Data
-                    </>
-                  )}
-                </Button>
               </div>
+              
+              <Button 
+                onClick={handleScrapeUrl}
+                disabled={isScrapingUrl || !url}
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              >
+                {isScrapingUrl ? (
+                  <>
+                    <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                    Extracting Product Information...
+                  </>
+                ) : (
+                  <>
+                    <Search className="mr-2 h-4 w-4" />
+                    Extract Product Information
+                  </>
+                )}
+              </Button>
             </div>
-
-            <Alert>
-              <Globe className="h-4 w-4" />
-              <AlertDescription>
-                <strong>Supported platforms:</strong> {supportedDomains.join(', ')} and many more.
-                <br />
-                Make sure the URL points to a specific product page for best results.
-              </AlertDescription>
-            </Alert>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-center">
+              <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+              <p className="text-green-800 text-sm">
+                Product information extracted successfully! Review and edit the details below.
+              </p>
+            </div>
           </div>
 
-          {extractedData && (
-            <>
-              <Separator />
-              
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-gray-900">Extracted Product Information</h3>
-                  <div className="flex space-x-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => setIsEditing(!isEditing)}
-                      size="sm"
-                    >
-                      <Edit3 className="mr-2 h-4 w-4" />
-                      {isEditing ? 'View Mode' : 'Edit Mode'}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      onClick={resetForm}
-                      size="sm"
-                    >
-                      <RefreshCw className="mr-2 h-4 w-4" />
-                      Start Over
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="grid gap-4 p-4 bg-gray-50 rounded-lg">
-                  <div className="text-sm text-gray-600">
-                    <strong>Source:</strong> {extractedData.metadata.domain} • 
-                    <strong> Extracted:</strong> {extractedData.metadata.extractedAt.toLocaleString()}
+          <Card>
+            <CardHeader>
+              <CardTitle>Extracted Product Information</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Product Name *</Label>
+                    <Input
+                      id="name"
+                      value={scrapedData.name}
+                      onChange={(e) => handleInputChange('name', e.target.value)}
+                      placeholder="Enter product name"
+                      required
+                      disabled={!canEdit || isLoading}
+                    />
                   </div>
                   
-                  {extractedData.images[0] && (
-                    <div className="flex justify-center">
-                      <img
-                        src={extractedData.images[0]}
-                        alt="Product"
-                        className="max-w-xs max-h-48 object-cover rounded-lg border"
-                      />
-                    </div>
-                  )}
+                  <div className="space-y-2">
+                    <Label htmlFor="category">Category *</Label>
+                    <select
+                      id="category"
+                      value={scrapedData.category}
+                      onChange={(e) => handleInputChange('category', e.target.value)}
+                      className="w-full p-2 border rounded-md"
+                      required
+                      disabled={!canEdit || isLoading}
+                    >
+                      <option value="">Select a category</option>
+                      {categories.map((category) => (
+                        <option key={category} value={category}>
+                          {category}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
 
-                {isEditing ? (
-                  <div className="space-y-6">
-                    <div className="grid gap-6 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="edit-name">Product Name *</Label>
-                        <Input
-                          id="edit-name"
-                          value={editableData.name}
-                          onChange={(e) => handleInputChange('name', e.target.value)}
-                          placeholder="Enter product name"
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="edit-category">Category *</Label>
-                        <Select value={editableData.category} onValueChange={(value) => handleInputChange('category', value)}>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a category" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {categories.map((category) => (
-                              <SelectItem key={category} value={category}>
-                                {category}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description *</Label>
+                  <textarea
+                    id="description"
+                    value={scrapedData.description}
+                    onChange={(e) => handleInputChange('description', e.target.value)}
+                    placeholder="Describe your product in detail..."
+                    rows={4}
+                    className="w-full p-2 border rounded-md"
+                    required
+                    disabled={!canEdit || isLoading}
+                  />
+                </div>
 
-                    <div className="space-y-2">
-                      <Label htmlFor="edit-description">Description *</Label>
-                      <Textarea
-                        id="edit-description"
-                        value={editableData.description}
-                        onChange={(e) => handleInputChange('description', e.target.value)}
-                        placeholder="Product description"
-                        rows={4}
-                      />
-                    </div>
-
-                    <div className="grid gap-6 md:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="edit-price">Price (USD) *</Label>
-                        <Input
-                          id="edit-price"
-                          type="number"
-                          min="0"
-                          step="0.01"
-                          value={editableData.price}
-                          onChange={(e) => handleInputChange('price', e.target.value)}
-                          placeholder="0.00"
-                        />
-                      </div>
-                      
-                      <div className="space-y-2">
-                        <Label htmlFor="edit-image">Image URL</Label>
-                        <Input
-                          id="edit-image"
-                          value={editableData.image}
-                          onChange={(e) => handleInputChange('image', e.target.value)}
-                          placeholder="https://example.com/image.jpg"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end space-x-4 pt-4">
-                      <Button
-                        variant="outline"
-                        onClick={() => setIsEditing(false)}
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        onClick={handleSave}
-                        disabled={isSaving}
-                        className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
-                      >
-                        {isSaving ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                            Saving...
-                          </>
-                        ) : (
-                          <>
-                            <Save className="mr-2 h-4 w-4" />
-                            Save Product
-                          </>
-                        )}
-                      </Button>
-                    </div>
+                <div className="grid gap-6 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label htmlFor="price">Price (USD) *</Label>
+                    <Input
+                      id="price"
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={scrapedData.price}
+                      onChange={(e) => handleInputChange('price', e.target.value)}
+                      placeholder="0.00"
+                      required
+                      disabled={!canEdit || isLoading}
+                    />
                   </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div>
-                        <Label className="text-sm font-medium text-gray-700">Product Name</Label>
-                        <p className="mt-1 text-gray-900">{editableData.name}</p>
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium text-gray-700">Category</Label>
-                        <p className="mt-1 text-gray-900">{editableData.category}</p>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <Label className="text-sm font-medium text-gray-700">Description</Label>
-                      <p className="mt-1 text-gray-900">{editableData.description}</p>
-                    </div>
-                    
-                    <div className="grid gap-4 md:grid-cols-2">
-                      <div>
-                        <Label className="text-sm font-medium text-gray-700">Price</Label>
-                        <p className="mt-1 text-gray-900">${editableData.price}</p>
-                      </div>
-                      <div>
-                        <Label className="text-sm font-medium text-gray-700">Image URL</Label>
-                        <p className="mt-1 text-gray-900 truncate">{editableData.image || 'Not provided'}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end space-x-4 pt-4">
-                      <Button
-                        variant="outline"
-                        onClick={() => setIsEditing(true)}
-                      >
-                        <Edit3 className="mr-2 h-4 w-4" />
-                        Edit Details
-                      </Button>
-                      <Button
-                        onClick={handleSave}
-                        disabled={isSaving}
-                        className="bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
-                      >
-                        {isSaving ? (
-                          <>
-                            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                            Saving...
-                          </>
-                        ) : (
-                          <>
-                            <Save className="mr-2 h-4 w-4" />
-                            Import Product
-                          </>
-                        )}
-                      </Button>
-                    </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="imageUrl">Image URL</Label>
+                    <Input
+                      id="imageUrl"
+                      type="url"
+                      value={scrapedData.imageUrl}
+                      onChange={(e) => handleInputChange('imageUrl', e.target.value)}
+                      placeholder="https://example.com/image.jpg"
+                      disabled={!canEdit || isLoading}
+                    />
                   </div>
-                )}
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+                </div>
 
-      <div className="bg-purple-50 rounded-lg p-4">
-        <h3 className="font-semibold text-purple-900 mb-2">Tips for URL Import</h3>
-        <ul className="text-sm text-purple-800 space-y-1">
-          <li>• Use direct product page URLs for best extraction results</li>
-          <li>• Verify extracted information before saving to ensure accuracy</li>
-          <li>• Some sites may require manual adjustments to category or description</li>
-          <li>• Images are automatically detected but you can provide your own URL</li>
+                <div className="space-y-2">
+                  <Label>Image Preview</Label>
+                  <div className="border rounded-lg p-4 bg-gray-50">
+                    <img
+                      src={scrapedData.imageUrl}
+                      alt="Product preview"
+                      className="w-full max-w-md h-48 object-cover rounded-lg border"
+                      onError={(e) => {
+                        e.currentTarget.src = 'https://via.placeholder.com/300x200?text=No+Image';
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-between pt-6">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={resetForm}
+                    disabled={isLoading}
+                  >
+                    Start Over
+                  </Button>
+                  
+                  <div className="flex space-x-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => navigate('/products/add')}
+                      disabled={isLoading}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={isLoading}
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                    >
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="animate-spin h-4 w-4 mr-2" />
+                          Adding Product...
+                        </>
+                      ) : (
+                        <>
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          Add Product
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </>
+      )}
+
+      <div className="bg-blue-50 rounded-lg p-4">
+        <h3 className="font-semibold text-blue-900 mb-2">Supported Websites</h3>
+        <ul className="text-sm text-blue-800 space-y-1">
+          <li>• Amazon product pages</li>
+          <li>• eBay listings</li>
+          <li>• Shopify stores</li>
+          <li>• WooCommerce sites</li>
+          <li>• Most e-commerce platforms</li>
         </ul>
+        <p className="text-xs text-blue-700 mt-2">
+          Note: Some websites may block automated scraping. Manual entry may be required for certain sites.
+        </p>
       </div>
     </div>
   );

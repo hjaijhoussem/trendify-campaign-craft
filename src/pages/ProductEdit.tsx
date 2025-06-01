@@ -5,18 +5,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Save, Upload as UploadIcon, Trash2, Package } from 'lucide-react';
+import { ArrowLeft, Save, Upload as UploadIcon, Trash2, Package, Loader2, AlertCircle } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useToast } from '@/components/ui/use-toast';
 import { useStore } from '@/store/useStore';
-import { mockProducts } from '@/services/mockData';
 import { useNotifications } from '@/hooks/useNotifications';
 
 const ProductEdit = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
-  const { products, updateProduct, deleteProduct } = useStore();
+  const { getProductById, updateProduct, deleteProduct, isLoading, error, clearError } = useStore();
   const { notifyProductUpdated } = useNotifications();
   
   const [formData, setFormData] = useState({
@@ -24,13 +23,14 @@ const ProductEdit = () => {
     description: '',
     category: '',
     price: '',
-    image: ''
+    imageUrl: ''
   });
   
-  const [isLoading, setIsLoading] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [productNotFound, setProductNotFound] = useState(false);
+  const [isLoadingProduct, setIsLoadingProduct] = useState(true);
 
   const categories = [
     'Electronics',
@@ -47,27 +47,40 @@ const ProductEdit = () => {
 
   // Load product data on component mount
   useEffect(() => {
-    if (!id) {
-      setProductNotFound(true);
-      return;
-    }
+    const loadProduct = async () => {
+      if (!id) {
+        setProductNotFound(true);
+        setIsLoadingProduct(false);
+        return;
+      }
 
-    // Try to find product in store first, then fallback to mock data
-    const allProducts = products.length > 0 ? products : mockProducts;
-    const product = allProducts.find(p => p.id === id);
-    
-    if (product) {
-      setFormData({
-        name: product.name,
-        description: product.description,
-        category: product.category,
-        price: product.price.toString(),
-        image: product.image
-      });
-    } else {
-      setProductNotFound(true);
-    }
-  }, [id, products]);
+      try {
+        setIsLoadingProduct(true);
+        clearError();
+        
+        const product = await getProductById(id);
+        
+        if (product) {
+          setFormData({
+            name: product.name,
+            description: product.description,
+            category: product.category,
+            price: product.price.toString(),
+            imageUrl: product.imageUrl
+          });
+        } else {
+          setProductNotFound(true);
+        }
+      } catch (error) {
+        console.error('Failed to load product:', error);
+        setProductNotFound(true);
+      } finally {
+        setIsLoadingProduct(false);
+      }
+    };
+
+    loadProduct();
+  }, [id, getProductById, clearError]);
 
   const handleInputChange = (field: string, value: string) => {
     setFormData(prev => ({
@@ -84,7 +97,7 @@ const ProductEdit = () => {
       const imageUrl = URL.createObjectURL(file);
       setFormData(prev => ({
         ...prev,
-        image: imageUrl
+        imageUrl: imageUrl
       }));
     }
   };
@@ -101,22 +114,28 @@ const ProductEdit = () => {
       return;
     }
 
-    setIsLoading(true);
+    if (!id) {
+      toast({
+        title: "Error",
+        description: "Product ID is missing.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsUpdating(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
       const updatedProductData = {
         name: formData.name,
         description: formData.description,
         category: formData.category,
         price: parseFloat(formData.price),
-        image: formData.image
+        imageUrl: formData.imageUrl
       };
       
-      // Update product in store
-      updateProduct(id!, updatedProductData);
+      // Update product via API
+      await updateProduct(id, updatedProductData);
       
       console.log('Updated product:', updatedProductData);
       
@@ -131,13 +150,15 @@ const ProductEdit = () => {
       
       navigate('/products');
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update product';
+      
       toast({
         title: "Error",
-        description: "Failed to update product. Please try again.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
-      setIsLoading(false);
+      setIsUpdating(false);
     }
   };
 
@@ -146,14 +167,20 @@ const ProductEdit = () => {
       return;
     }
 
+    if (!id) {
+      toast({
+        title: "Error",
+        description: "Product ID is missing.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setIsDeleting(true);
     
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Delete product from store
-      deleteProduct(id!);
+      // Delete product via API
+      await deleteProduct(id);
       
       toast({
         title: "Product Deleted",
@@ -162,9 +189,11 @@ const ProductEdit = () => {
       
       navigate('/products');
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete product';
+      
       toast({
         title: "Error",
-        description: "Failed to delete product. Please try again.",
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -172,6 +201,41 @@ const ProductEdit = () => {
     }
   };
 
+  // Loading state
+  if (isLoadingProduct) {
+    return (
+      <div className="space-y-6 max-w-4xl">
+        <div className="flex items-center space-x-4">
+          <Button 
+            variant="outline" 
+            onClick={() => navigate('/products')}
+            className="flex items-center"
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Products
+          </Button>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Edit Product</h1>
+            <p className="text-gray-600 mt-1">Loading product information...</p>
+          </div>
+        </div>
+
+        <Card>
+          <CardContent className="p-12 text-center">
+            <div className="mx-auto w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+              <Loader2 className="h-8 w-8 text-gray-400 animate-spin" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading Product</h3>
+            <p className="text-gray-600">
+              Fetching product information...
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Product not found state
   if (productNotFound) {
     return (
       <div className="space-y-6 max-w-4xl">
@@ -224,6 +288,18 @@ const ProductEdit = () => {
           <p className="text-gray-600 mt-1">Update the product information in your catalog.</p>
         </div>
       </div>
+
+      {/* Show error banner if there's an error */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="flex items-center">
+            <AlertCircle className="h-5 w-5 text-red-400 mr-2" />
+            <p className="text-red-800 text-sm">
+              {error}
+            </p>
+          </div>
+        </div>
+      )}
 
       <Card>
         <CardHeader>
@@ -288,20 +364,22 @@ const ProductEdit = () => {
               </div>
               
               <div className="space-y-2">
-                <Label htmlFor="image">Product Image</Label>
+                <Label htmlFor="imageUrl">Product Image</Label>
                 <div className="flex items-center space-x-2">
                   <Input
-                    id="image"
+                    id="imageUrl"
                     type="file"
                     accept="image/*"
                     onChange={handleImageUpload}
                     className="hidden"
+                    disabled={isLoading}
                   />
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={() => document.getElementById('image')?.click()}
+                    onClick={() => document.getElementById('imageUrl')?.click()}
                     className="flex items-center"
+                    disabled={isLoading}
                   >
                     <UploadIcon className="mr-2 h-4 w-4" />
                     Upload New Image
@@ -315,14 +393,17 @@ const ProductEdit = () => {
               </div>
             </div>
 
-            {formData.image && (
+            {formData.imageUrl && (
               <div className="space-y-2">
                 <Label>Current Image</Label>
                 <div className="border rounded-lg p-4 bg-gray-50">
                   <img
-                    src={formData.image}
+                    src={formData.imageUrl}
                     alt="Product preview"
                     className="max-w-xs max-h-48 object-cover rounded-lg"
+                    onError={(e) => {
+                      e.currentTarget.src = 'https://via.placeholder.com/300x200?text=No+Image';
+                    }}
                   />
                 </div>
               </div>
@@ -337,7 +418,7 @@ const ProductEdit = () => {
               >
                 {isDeleting ? (
                   <>
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    <Loader2 className="animate-spin h-4 w-4 mr-2" />
                     Deleting...
                   </>
                 ) : (
@@ -353,17 +434,18 @@ const ProductEdit = () => {
                   type="button"
                   variant="outline"
                   onClick={() => navigate('/products')}
+                  disabled={isUpdating}
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isUpdating}
                   className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                 >
-                  {isLoading ? (
+                  {isUpdating ? (
                     <>
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      <Loader2 className="animate-spin h-4 w-4 mr-2" />
                       Updating Product...
                     </>
                   ) : (

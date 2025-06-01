@@ -1,34 +1,27 @@
-
 import { useEffect } from 'react';
 import { useStore } from '@/store/useStore';
-import { mockProducts, mockTrendData, mockCampaigns } from '@/services/mockData';
+import { mockTrendData, mockCampaigns } from '@/services/mockData';
 import { StatsCards } from '@/components/dashboard/StatsCards';
 import { TrendingProducts } from '@/components/dashboard/TrendingProducts';
 import { RecentActivity } from '@/components/dashboard/RecentActivity';
 import { QuickActions } from '@/components/dashboard/QuickActions';
 
 const Dashboard = () => {
-  const { products, campaigns, trendData, setTrendData } = useStore();
+  const { products, isLoading, fetchProducts } = useStore();
 
   useEffect(() => {
-    // Initialize mock data if empty
-    if (products.length === 0) {
-      mockProducts.forEach(product => {
-        useStore.getState().addProduct(product);
-      });
-    }
-    if (campaigns.length === 0) {
-      mockCampaigns.forEach(campaign => {
-        useStore.getState().addCampaign(campaign);
-      });
-    }
-    if (trendData.length === 0) {
-      setTrendData(mockTrendData);
-    }
-  }, [products.length, campaigns.length, trendData.length, setTrendData]);
+    // Fetch products from API on mount
+    fetchProducts();
+  }, [fetchProducts]);
 
-  const trendingProducts = products.filter(p => p.isTrending);
-  const activeCampaigns = campaigns.filter(c => c.status === 'published' || c.status === 'scheduled');
+  // Ensure products is an array (fallback to empty array if undefined)
+  const safeProducts = products || [];
+  
+  const trendingProducts = safeProducts.filter(p => p.isTrend);
+  
+  // Mock campaigns data for now (since campaigns aren't in the new store yet)
+  const mockActiveCampaigns = mockCampaigns.filter(c => c.status === 'published' || c.status === 'scheduled');
+  const mockScheduledCampaigns = mockCampaigns.filter(c => c.status === 'scheduled');
 
   return (
     <div className="space-y-6">
@@ -41,15 +34,16 @@ const Dashboard = () => {
       </div>
 
       <StatsCards 
-        totalProducts={products.length}
+        totalProducts={safeProducts.length}
         trendingProducts={trendingProducts.length}
-        activeCampaigns={activeCampaigns.length}
-        scheduledCampaigns={campaigns.filter(c => c.status === 'scheduled').length}
+        activeCampaigns={mockActiveCampaigns.length}
+        scheduledCampaigns={mockScheduledCampaigns.length}
+        isLoading={isLoading}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <TrendingProducts products={trendingProducts} />
-        <RecentActivity campaigns={campaigns.slice(0, 5)} />
+        <TrendingProducts products={trendingProducts} isLoading={isLoading} />
+        <RecentActivity campaigns={mockCampaigns.slice(0, 5)} />
       </div>
     </div>
   );

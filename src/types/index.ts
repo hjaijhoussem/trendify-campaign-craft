@@ -3,11 +3,13 @@ export interface Product {
   name: string;
   description: string;
   category: string;
-  image: string;
+  imageUrl: string;
   price: number;
-  trendingScore?: number;
-  isTrending?: boolean;
-  createdAt: Date;
+  trendingPercentage?: number;
+  isTrend?: boolean;
+  keywords?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface TrendData {

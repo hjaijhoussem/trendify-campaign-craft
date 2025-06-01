@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { TrendingUp, Package, Megaphone, Calendar } from 'lucide-react';
 
@@ -7,13 +6,15 @@ interface StatsCardsProps {
   trendingProducts: number;
   activeCampaigns: number;
   scheduledCampaigns: number;
+  isLoading?: boolean;
 }
 
 export function StatsCards({ 
   totalProducts, 
   trendingProducts, 
   activeCampaigns, 
-  scheduledCampaigns 
+  scheduledCampaigns,
+  isLoading = false
 }: StatsCardsProps) {
   const stats = [
     {
@@ -59,7 +60,11 @@ export function StatsCards({
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stat.value}</div>
+            {isLoading ? (
+              <div className="h-8 bg-gray-200 rounded animate-pulse"></div>
+            ) : (
+              <div className="text-2xl font-bold">{stat.value}</div>
+            )}
           </CardContent>
         </Card>
       ))}
